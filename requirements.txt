@@ -1,0 +1,6 @@
+torch==2.8.0
+torchvision
+pandas
+seaborn
+scipy
+matplotlib
