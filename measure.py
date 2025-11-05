@@ -50,3 +50,14 @@ def specificity_withLogtis(y_pred, y_true, eps=1e-7):
     fp = (y_pred * (1 - y_true)).sum(dim=(1, 2, 3))
     spec = (tn + eps) / (tn + fp + eps)
     return spec.mean()
+
+# ---------------------------
+# Dice metric (masked)
+# ---------------------------
+def masked_dice_coef(logits, targets, mask, eps=1e-6):
+    probs = torch.sigmoid(logits)
+    pred = (probs>0.5).float()
+    intersection = (pred * targets * mask).sum(dim=(1,2,3))
+    union = (pred*mask).sum(dim=(1,2,3)) + (targets*mask).sum(dim=(1,2,3))
+    dice = (2*intersection + eps)/(union + eps)
+    return dice.mean().item()
