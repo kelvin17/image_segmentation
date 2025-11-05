@@ -25,7 +25,6 @@ class DiceLoss(nn.Module):
         
         loss = 1-(up/down)
         return loss
-        
 
 class FocalLoss(nn.Module):
     def __init__(self, alpha=0.25, gamma=2.0):
@@ -74,3 +73,17 @@ def compute_pos_weight(train_loader, device='cpu'):
 
     pos_weight = num_background / (num_foreground + 1e-6)  # 防止除零
     return torch.tensor(pos_weight, dtype=torch.float32, device=device)
+
+
+# ---------------------------
+# Masked BCE Loss
+# ---------------------------
+class MaskedBCELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_pred, y_true, mask):
+        loss = F.binary_cross_entropy_with_logits(y_pred, y_true, reduction='none')
+        loss = loss * mask
+        denom = mask.sum()
+        return loss.sum()/denom

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
-from measure import *
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -64,23 +63,15 @@ class EncDec(nn.Module):
 
 
 class LightningEncDec(LightningModule):
-    def __init__(self, loss_fn=nn.BCEWithLogitsLoss(), loss_name=None, 
+    def __init__(self, loss_fn=nn.BCEWithLogitsLoss(), loss_name=None, metrics=None,
                  in_channels=3, num_classes=1):
         super().__init__()
         self.model = EncDec()
         self.criterium = loss_fn
         self.model_name = "EncDec"
         self.loss_fc_name = (loss_name if loss_name is not None else loss_fn.__class__.__name__)
-
-        custom_metrics = {
-            "dice": dice_coefficient_withLogtis, 
-            "iou": iou_score_withLogtis,
-            "pixel_acc": pixel_accuracy_withLogtis, 
-            "sensitivity": sensitivity_withLogtis,
-            "specificity": specificity_withLogtis
-        }
         
-        self.metrics = custom_metrics
+        self.metrics = metrics
 
         self.history = {
             "train_loss": [],

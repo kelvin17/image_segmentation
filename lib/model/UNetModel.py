@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
-from measure import *
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -157,20 +156,13 @@ class UNet2(nn.Module):
 
 
 class LightningUNet2(LightningModule):
-    def __init__(self, loss_fn=nn.BCEWithLogitsLoss(), loss_name=None, n_channels=3, n_classes=2, base_c=64):
+    def __init__(self, loss_fn=nn.BCEWithLogitsLoss(), loss_name=None, metrics=None, n_channels=3, n_classes=2, base_c=64, with_mask=False):
         super().__init__()
         self.model = UNet2(n_channels=n_channels, n_classes=n_classes, base_c=base_c)
         self.model_name = "UNet"
+        self.with_mask = with_mask
         
-        custom_metrics = {
-            "dice": dice_coefficient_withLogtis, 
-            "iou": iou_score_withLogtis,
-            "pixel_acc": pixel_accuracy_withLogtis, 
-            "sensitivity": sensitivity_withLogtis,
-            "specificity": specificity_withLogtis
-        }
-        
-        self.metrics = custom_metrics
+        self.metrics = metrics
         self.criterium = loss_fn
         self.loss_fc_name = (loss_name if loss_name is not None else loss_fn.__class__.__name__)
         
@@ -197,10 +189,24 @@ class LightningUNet2(LightningModule):
             metric_logs[name] = val
         return metric_logs
     
+    def compute_metrics_mask(self, y_hat, y_true, mask):
+        metric_logs = {}
+        for name, func in self.metrics.items():
+            val = func(y_hat, y_true, mask)
+            if isinstance(val, torch.Tensor):
+                val = val.item()
+            metric_logs[name] = val
+        return metric_logs
+    
     def training_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
-        loss = self.criterium(outputs, masks)
+        if self.with_mask:
+            images, labels, mask = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels, mask)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels)
         self.train_epoch_outputs.append(loss.detach())
         self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
@@ -210,13 +216,19 @@ class LightningUNet2(LightningModule):
             avg_loss = torch.stack(self.train_epoch_outputs).mean().item()
             self.history["train_loss"].append(avg_loss)
             self.train_epoch_outputs.clear()
-
     
     def validation_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
-        loss = self.criterium(outputs, masks)
-        metrics = self.compute_metrics(outputs, masks)
+        if self.with_mask:
+            images, labels, masks = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels, masks)
+            metrics = self.compute_metrics_mask(outputs, labels, masks)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels)
+            metrics = self.compute_metrics(outputs, labels)
+            
         
         self.val_epoch_outputs.append({"val_loss": loss.detach(), **metrics})
         
@@ -236,10 +248,15 @@ class LightningUNet2(LightningModule):
             self.val_epoch_outputs.clear()
 
     def test_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
+        if self.with_mask:    
+            images, labels, masks = batch
+            outputs = self(images)
+            metrics = self.compute_metrics_mask(outputs, labels, masks)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            metrics = self.compute_metrics(outputs, labels)
         
-        metrics = self.compute_metrics(outputs, masks)
         self.test_epoch_outputs.append(metrics)
         return metrics
     
@@ -274,7 +291,7 @@ class LightningUNet2(LightningModule):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{self.model_name}-{self.loss_fc_name}-loss_curve.png", dpi=300)
+        plt.savefig(f"plots/{self.model_name}-{self.loss_fc_name}-loss_curve.png", dpi=300)
         plt.close()
 
         # --- 2. Metrics （Val every epoch + Test point） ---
@@ -299,7 +316,7 @@ class LightningUNet2(LightningModule):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{self.model_name}-{self.loss_fc_name}-metrics_curve.png", dpi=300)
+        plt.savefig(f"plots/{self.model_name}-{self.loss_fc_name}-metrics_curve.png", dpi=300)
         plt.close()
     
     

@@ -69,7 +69,6 @@ if __name__ == '__main__':
     train_transform = transforms.Compose([transforms.Resize((size, size)),
                                         transforms.ToTensor()])
     
-    
     trainset = Ph2(transform=train_transform)
     print(f'dataset: {len(trainset)}')
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
