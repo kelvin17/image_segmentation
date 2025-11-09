@@ -101,14 +101,18 @@ def compute_pos_weight(train_loader, device='cpu'):
     num_foreground = 0
     num_background = 0
     
-    for _, masks in train_loader:
-        # mask is 0/1，shape = [B,1,H,W]
-        if masks.dim() == 4:
-            masks = masks.squeeze(1)  # [B,H,W]
-        masks = masks.to(device)
+    for batch in train_loader:
+        if len(batch) == 2:
+            _, labels = batch
+        elif len(batch) == 3:
+            _, labels, _ = batch
+        # labels is 0/1，shape = [B,1,H,W]
+        if labels.dim() == 4:
+            labels = labels.squeeze(1)  # [B,H,W]
+        labels = labels.to(device)
 
-        num_foreground += (masks == 1).sum().item()
-        num_background += (masks == 0).sum().item()
+        num_foreground += (labels == 1).sum().item()
+        num_background += (labels == 0).sum().item()
 
     pos_weight = num_background / (num_foreground + 1e-6)  # 防止除零
     return torch.tensor(pos_weight, dtype=torch.float32, device=device)
