@@ -45,15 +45,12 @@ def train_eval_ph2():
     val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=3)
     test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=3)
 
-    # loss - BCE    
-    # loss = nn.BCEWithLogitsLoss()
-
     # loss - Weight BCE
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     pos_weight=compute_pos_weight(train_loader, device)
     print(f'train pos_weight:{pos_weight}')
-    loss = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    loss_name = "Weight-BCE"
+    loss = BCELoss(pos_weight=pos_weight) 
+    loss_name = "WeightedBCE"
     
     # focal loss
     # loss = FocalLoss()
@@ -105,10 +102,16 @@ def train_eval_DRIVE():
     
     custom_metrics = {
             "dice": masked_dice_coef, 
+            "iou" : masked_iou_score_withLogtis,
         }
     
-    loss = MaskedBCELoss()
-    loss_name = 'MaskedBCELoss'
+    # loss - Weight BCE
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    pos_weight=compute_pos_weight(train_loader, device)
+    print(f'train pos_weight:{pos_weight}')
+
+    loss = BCELoss(pos_weight=pos_weight, with_mask=True)
+    loss_name = 'MaskedWeightedBCE'
     
     model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics,
                            n_channels=3, n_classes=1, base_c=32, with_mask=True)
@@ -124,6 +127,6 @@ def train_eval_DRIVE():
     
 if __name__ == "__main__":
     print("Begin")
-    train_eval_ph2()
-    # train_eval_DRIVE()
+    # train_eval_ph2()
+    train_eval_DRIVE()
     print("Finished")
