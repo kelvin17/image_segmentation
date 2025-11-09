@@ -58,7 +58,7 @@ class DRIVEDataset(torch.utils.data.Dataset):
             mask = torch.from_numpy(mask).unsqueeze(0)
             
             if self.transform:
-                img, gt, mask = self.transform(img, gt, mask)
+                img, gt, mask = self.transform(img=img, gt=gt, mask=mask)
             
             return img, gt, mask
         else:
@@ -69,7 +69,7 @@ class DRIVEDataset(torch.utils.data.Dataset):
             mask = torch.from_numpy(mask).unsqueeze(0)
             
             if self.transform:
-                img, mask = self.transform(img, mask)
+                img, mask = self.transform(img=img, mask=mask)
             
             return img, mask
 
@@ -109,7 +109,7 @@ class JointTransform:
         if gt is not None and not isinstance(gt, torch.Tensor):
             gt = TF.to_tensor(gt)
             
-        return (img, mask, gt) if gt is not None else (img, mask)
+        return (img, gt, mask) if gt is not None else (img, mask)
     
 if __name__ == '__main__':
     batch_size = 1
