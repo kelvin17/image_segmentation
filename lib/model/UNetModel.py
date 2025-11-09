@@ -180,19 +180,19 @@ class LightningUNet2(LightningModule):
     def forward(self, x):
         return self.model(x)
     
-    def compute_metrics(self, y_hat, y_true):
+    def compute_metrics(self, y_hat, y_true, soft=True):
         metric_logs = {}
         for name, func in self.metrics.items():
-            val = func(y_hat, y_true)
+            val = func(y_hat, y_true, soft)
             if isinstance(val, torch.Tensor):
                 val = val.item()
             metric_logs[name] = val
         return metric_logs
     
-    def compute_metrics_mask(self, y_hat, y_true, mask):
+    def compute_metrics_mask(self, y_hat, y_true, mask, soft=True):
         metric_logs = {}
         for name, func in self.metrics.items():
-            val = func(y_hat, y_true, mask)
+            val = func(y_hat, y_true, mask, soft)
             if isinstance(val, torch.Tensor):
                 val = val.item()
             metric_logs[name] = val
@@ -251,11 +251,11 @@ class LightningUNet2(LightningModule):
         if self.with_mask:    
             images, labels, masks = batch
             outputs = self(images)
-            metrics = self.compute_metrics_mask(outputs, labels, masks)
+            metrics = self.compute_metrics_mask(outputs, labels, masks, soft=False)
         else:
             images, labels = batch
             outputs = self(images)
-            metrics = self.compute_metrics(outputs, labels)
+            metrics = self.compute_metrics(outputs, labels, soft=False)
         
         self.test_epoch_outputs.append(metrics)
         return metrics
