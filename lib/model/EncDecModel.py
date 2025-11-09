@@ -64,11 +64,12 @@ class EncDec(nn.Module):
 
 class LightningEncDec(LightningModule):
     def __init__(self, loss_fn=nn.BCEWithLogitsLoss(), loss_name=None, metrics=None,
-                 in_channels=3, num_classes=1):
+                 in_channels=3, num_classes=1, with_mask=False):
         super().__init__()
         self.model = EncDec()
         self.criterium = loss_fn
         self.model_name = "EncDec"
+        self.with_mask = with_mask
         self.loss_fc_name = (loss_name if loss_name is not None else loss_fn.__class__.__name__)
         
         self.metrics = metrics

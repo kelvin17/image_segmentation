@@ -112,22 +112,24 @@ def train_eval_DRIVE():
         }
     
     # loss - Weight BCE
-    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    # pos_weight=compute_pos_weight(train_loader, device)
-    # print(f'train pos_weight:{pos_weight}')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    pos_weight=compute_pos_weight(train_loader, device)
+    print(f'train pos_weight:{pos_weight}')
 
-    # loss = BCELoss(pos_weight=pos_weight, with_mask=True)
-    # loss_name = 'MaskedWeightedBCE'
+    loss = BCELoss(pos_weight=pos_weight, with_mask=True)
+    loss_name = 'MaskedWeightedBCE'
     
     # loss - Weight
     # loss = BCELoss(with_mask=True)
     # loss_name = 'MaskedBCE'
     
-    loss = FocalLoss(with_mask=True)
-    loss_name = 'MaskedFocal'
+    # loss - FocalLoss
+    # loss = FocalLoss(with_mask=True)
+    # loss_name = 'MaskedFocal'
     
-    model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics,
-                           n_channels=3, n_classes=1, base_c=32, with_mask=True)
+    # model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, n_channels=3, n_classes=1, base_c=32, with_mask=True)
+    
+    model = LightningEncDec(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, in_channels=3, num_classes=1, with_mask=True)
     
     exp_name = f"{model.model_name}-{model.loss_fc_name}-DRIVE"
     
@@ -140,6 +142,6 @@ def train_eval_DRIVE():
     
 if __name__ == "__main__":
     print("Begin")
-    train_eval_ph2()
-    # train_eval_DRIVE()
+    # train_eval_ph2()
+    train_eval_DRIVE()
     print("Finished")
