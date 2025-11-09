@@ -87,19 +87,34 @@ class LightningEncDec(LightningModule):
     def forward(self, x):
         return self.model(x)
     
-    def compute_metrics(self, y_hat, y_true):
+    def compute_metrics(self, y_hat, y_true, soft=True):
         metric_logs = {}
         for name, func in self.metrics.items():
-            val = func(y_hat, y_true)
+            val = func(y_hat, y_true, soft)
+            if isinstance(val, torch.Tensor):
+                val = val.item()
+            metric_logs[name] = val
+        return metric_logs
+    
+    def compute_metrics_mask(self, y_hat, y_true, mask, soft=True):
+        metric_logs = {}
+        for name, func in self.metrics.items():
+            val = func(y_hat, y_true, mask, soft)
             if isinstance(val, torch.Tensor):
                 val = val.item()
             metric_logs[name] = val
         return metric_logs
     
     def training_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
-        loss = self.criterium(outputs, masks)
+        if self.with_mask:
+            images, labels, mask = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels, mask)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels)
+            
         self.train_epoch_outputs.append(loss.detach())
         self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
@@ -111,10 +126,16 @@ class LightningEncDec(LightningModule):
             self.train_epoch_outputs.clear()
     
     def validation_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
-        loss = self.criterium(outputs, masks)
-        metrics = self.compute_metrics(outputs, masks)
+        if self.with_mask:
+            images, labels, masks = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels, masks)
+            metrics = self.compute_metrics_mask(outputs, labels, masks)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            loss = self.criterium(outputs, labels)
+            metrics = self.compute_metrics(outputs, labels)
         
         self.val_epoch_outputs.append({"val_loss": loss.detach(), **metrics})
         
@@ -134,10 +155,15 @@ class LightningEncDec(LightningModule):
             self.val_epoch_outputs.clear()
 
     def test_step(self, batch, batch_idx):
-        images, masks = batch
-        outputs = self(images)
+        if self.with_mask:    
+            images, labels, masks = batch
+            outputs = self(images)
+            metrics = self.compute_metrics_mask(outputs, labels, masks, soft=False)
+        else:
+            images, labels = batch
+            outputs = self(images)
+            metrics = self.compute_metrics(outputs, labels, soft=False)
         
-        metrics = self.compute_metrics(outputs, masks)
         self.test_epoch_outputs.append(metrics)
         return metrics
     
@@ -171,7 +197,7 @@ class LightningEncDec(LightningModule):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{self.model_name}-{self.loss_fc_name}-loss_curve.png", dpi=300)
+        plt.savefig(f"plots/{self.model_name}-{self.loss_fc_name}-loss_curve.png", dpi=300)
         plt.close()
 
         # --- 2. Metrics （Val every epoch + Test point） ---
@@ -196,7 +222,7 @@ class LightningEncDec(LightningModule):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{self.model_name}-{self.loss_fc_name}-metrics_curve.png", dpi=300)
+        plt.savefig(f"plots/{self.model_name}-{self.loss_fc_name}-metrics_curve.png", dpi=300)
         plt.close()
     
     
