@@ -119,7 +119,7 @@ def train_eval_DRIVE():
     exp_name = f"{model.model_name}-{model.loss_fc_name}-DRIVE"
     
     logger = CSVLogger("logs", name=f"{exp_name}_experiment")
-    trainer = Trainer(max_epochs=50, log_every_n_steps=10, accelerator="gpu", logger=logger)
+    trainer = Trainer(max_epochs=100, log_every_n_steps=10, accelerator="gpu", logger=logger)
     trainer.fit(model, train_loader, val_loader)
     
     model.plot_metrics()
