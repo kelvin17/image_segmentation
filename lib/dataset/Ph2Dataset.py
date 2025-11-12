@@ -10,6 +10,7 @@ import torch.nn.functional as F
 # import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
+from lib.tools.checkdataset import *
 
 DATA_PATH = '/dtu/datasets1/02516/PH2_Dataset_images'
 # DATA_PATH = '/Users/blackbear/Desktop/dtu/semester2/DeepLearningInCV/execise/ph2_data/'
@@ -65,22 +66,14 @@ class Ph2(torch.utils.data.Dataset):
 if __name__ == '__main__':
     batch_size = 1
     
-    size = 128
-    train_transform = transforms.Compose([transforms.Resize((size, size)),
-                                        transforms.ToTensor()])
+    # size = 128
+    train_transform = transforms.Compose([transforms.ToTensor()])
     
     trainset = Ph2(transform=train_transform)
     print(f'dataset: {len(trainset)}')
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
                             num_workers=1)
     
-    images, lesions = next(iter(train_loader))
-    print(images.shape)
-    print(lesions.shape)
+    analyze_dataset(train_loader)
     
-    # torch.set_printoptions(profile="full")
     
-    # print('---' * 20 + 'image' + '*'*20)
-    # print(images)
-    # print('---' * 20 + 'lesions' + '*'*20)
-    # print(lesions)
