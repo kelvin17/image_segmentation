@@ -87,7 +87,7 @@ class UNet(nn.Module):
         self.bottleneck_conv = Down(base_c*8, base_c*8) # 256,512
 
         # upsampling
-        self.up1 = Up(base_c * 16, base_c * 4) # self.up1 = Up(base_c * 16, base_c * 4)
+        self.up1 = Up(base_c * 16, base_c * 4) # size of in_channel = output of bottlen + skip connection,so double of in_channel of bottleneck
         self.up2 = Up(base_c * 8, base_c * 2) # self.up2 = Up(base_c * 8, base_c * 2)
         self.up3 = Up(base_c * 4, base_c)
         self.up4 = Up(base_c * 2, base_c)
@@ -110,16 +110,16 @@ class UNet(nn.Module):
         return logits
         
 class UNet2(nn.Module):
-    def __init__(self, n_channels=3, n_classes=2, base_c=64):
+    def __init__(self, n_channels=3, n_classes=2, base_c=32):
         super().__init__()
         self.inc = DoubleConv(n_channels, base_c)
         # downsampling
-        self.down1 = Down(base_c, base_c*2, use_conv_2=True) # 64,128
-        self.down2 = Down(base_c*2, base_c*4, use_conv_2=True) # 128,256
-        self.down3 = Down(base_c*4, base_c*8, use_conv_2=True) # 256,512
+        self.down1 = Down(base_c, base_c*2, use_conv_2=True) # 32,64
+        self.down2 = Down(base_c*2, base_c*4, use_conv_2=True) # 64,128
+        self.down3 = Down(base_c*4, base_c*8, use_conv_2=True) # 128,256
         
         # bottleneck
-        self.bottleneck_conv = Down(base_c*8, base_c*8, use_conv_2=True) # 256,512
+        self.bottleneck_conv = Down(base_c*8, base_c*8, use_conv_2=True) # 256,256
 
         # upsampling
         self.up1 = Up(base_c * 16, base_c * 4, bilinear=False) # self.up1 = Up(base_c * 16, base_c * 4)
@@ -321,8 +321,8 @@ class LightningUNet2(LightningModule):
     
     
 if __name__ == '__main__':
-    model = UNet2(n_channels=3, n_classes=2, base_c=32)
+    model = UNet2(n_channels=3, n_classes=1, base_c=32)
     print(model)
     
-    x = torch.randn(1, 3, 256, 256)
-    y = model(x)
+    # x = torch.randn(1, 3, 256, 256)
+    # y = model(x)
