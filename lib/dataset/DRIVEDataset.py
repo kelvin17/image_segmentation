@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import random
 import torchvision.transforms.functional as TF
 from sklearn.model_selection import train_test_split
+from lib.tools.checkdataset import *
 
 DATA_PATH = '/dtu/datasets1/02516/DRIVE'
 
@@ -111,36 +112,29 @@ class JointTransform:
             
         return (img, gt, mask) if gt is not None else (img, mask)
     
+    
+class JustForToTensor:
+    def __init__(self):
+        self.ok = "ok"
+
+    def __call__(self, img, mask, gt=None):
+        # To tensor
+        if not isinstance(img, torch.Tensor):
+            img = TF.to_tensor(img)
+        if not isinstance(mask, torch.Tensor):
+            mask = TF.to_tensor(mask)
+        if gt is not None and not isinstance(gt, torch.Tensor):
+            gt = TF.to_tensor(gt)
+            
+        return (img, gt, mask) if gt is not None else (img, mask)
+    
 if __name__ == '__main__':
     batch_size = 1
     
-    size = 384
-    transform = JointTransform(resize=(size, size))
+    transform = JustForToTensor()
     trainset = DRIVEDataset(train='train', transform=transform)
-    print(f'trainset: {len(trainset)}')
     
-    indices = list(range(len(trainset)))
-    random_state = 42
-
-    # divide data into 2 splits(80:20=4:1)
-    train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=random_state)
-
-    train_dataset = Subset(trainset, train_idx)
-    val_dataset = Subset(trainset, val_idx)
-
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=1)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=1)
+    train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
+                            num_workers=1)
     
-    image, gt, mask = next(iter(train_loader))
-    
-    print(image.shape)
-    print(gt.shape)
-    print(mask.shape)
-    
-    print('*'*50)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=1)
-    image, gt, mask = next(iter(val_loader))
-    
-    print(image.shape)
-    print(gt.shape)
-    print(mask.shape)
+    analyze_dataset(train_loader)
