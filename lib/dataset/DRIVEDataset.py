@@ -17,7 +17,8 @@ from lib.tools.checkdataset import *
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-DATA_PATH = '/dtu/datasets1/02516/DRIVE'
+DATA_PATH_TRAIN = '/dtu/datasets1/02516/DRIVE/training'
+DATA_PATH_TEST = '/zhome/b7/2/219221/IDLCV_Exercise_3_segmentation/dataset/DRIVE/test'
 
 class DRIVEDataset(torch.utils.data.Dataset):
     def __init__(self, train, transform):
@@ -26,13 +27,11 @@ class DRIVEDataset(torch.utils.data.Dataset):
         # mask FOV
         self.train = train
         if self.train == 'train':
-            img_dir = Path(DATA_PATH) / 'training'
+            img_dir = DATA_PATH_TRAIN
         else:
-            img_dir = Path(DATA_PATH) / 'test'
+            img_dir = DATA_PATH_TEST
         
-        print(img_dir)
         self.images = sorted(img_dir.glob('images/*.tif'))
-
         self.transform = transform
 
     def __len__(self):
@@ -72,10 +71,14 @@ class DRIVEDataset(torch.utils.data.Dataset):
             
             return img, gt, mask
         else:
-            # test, no gt
+            # test, gt
             mask_path = img_path.parent.parent / 'mask' / img_path.name.replace('.tif', '_mask.gif')
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             mask = (mask>127).astype(np.float32)
+            
+            gt_path = img_path.parent.parent / 'labels' / img_path.name.replace('_test.tif', '_manual1.png')
+            gt = cv2.imread(str(gt_path), cv2.IMREAD_GRAYSCALE)
+            gt = (gt>127).astype(np.float32)
             
             if self.transform:
                 augmented = self.transform(image=img, mask=mask)
