@@ -14,6 +14,8 @@ import random
 import torchvision.transforms.functional as TF
 from sklearn.model_selection import train_test_split
 from lib.tools.checkdataset import *
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 DATA_PATH = '/dtu/datasets1/02516/DRIVE'
 
@@ -41,7 +43,7 @@ class DRIVEDataset(torch.utils.data.Dataset):
         'Generates one sample of data'
         img_path = self.images[idx]
         img = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB).astype(np.float32)/255.0
-        img = torch.from_numpy(img).permute(2,0,1)  # C,H,W
+        # img = torch.from_numpy(img).permute(2,0,1)  # C,H,W
         
         if self.train == 'train': 
             # training set
@@ -50,16 +52,23 @@ class DRIVEDataset(torch.utils.data.Dataset):
 
             gt = cv2.imread(str(gt_path), cv2.IMREAD_GRAYSCALE)
             gt = (gt>127).astype(np.float32)
-            gt = torch.from_numpy(gt).unsqueeze(0)
+            # gt = torch.from_numpy(gt).unsqueeze(0)
+            # gt = np.expand_dims(gt, axis=-1)
             
             mask_path = img_path.parent.parent / 'mask' / img_path.name.replace('.tif', '_mask.gif')
             
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             mask = (mask>127).astype(np.float32)
-            mask = torch.from_numpy(mask).unsqueeze(0)
             
             if self.transform:
-                img, gt, mask = self.transform(img=img, gt=gt, mask=mask)
+                augmented = self.transform(image=img, gt=gt, mask=mask)
+                img, gt, mask = augmented['image'], augmented['gt'], augmented['mask']
+                
+            # gt = gt.squeeze(-1)
+            # mask = mask.squeeze(-1)
+            mask = mask.unsqueeze(0)
+            gt = gt.unsqueeze(0)
+            
             
             return img, gt, mask
         else:
@@ -67,74 +76,47 @@ class DRIVEDataset(torch.utils.data.Dataset):
             mask_path = img_path.parent.parent / 'mask' / img_path.name.replace('.tif', '_mask.gif')
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             mask = (mask>127).astype(np.float32)
-            mask = torch.from_numpy(mask).unsqueeze(0)
             
             if self.transform:
-                img, mask = self.transform(img=img, mask=mask)
+                augmented = self.transform(image=img, mask=mask)
+                img, mask = augmented['image'], augmented['mask']
+                
+            mask = mask.unsqueeze(0)
             
             return img, mask
 
 
-class JointTransform:
-    def __init__(self, resize=(512, 512), augment=True):
-        """
-        resize: tuple (H, W) to resize all images and masks to same size
-        augment: whether to apply random flips
-        """
-        self.resize = resize
-        self.augment = augment
+def get_train_transform(target_size=(512,512)):
+    return A.Compose([
+        A.Resize(*target_size),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.RandomRotate90(p=0.5),
+        A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.1, rotate_limit=30, p=0.7),
+        A.RandomBrightnessContrast(p=0.2),
+        ToTensorV2()
+    ],
+    additional_targets={
+        'gt': 'mask',
+        'mask': 'mask'
+    })
 
-    def __call__(self, img, mask, gt=None):
-        # resize — 注意 interpolation
-        img = TF.resize(img, self.resize, interpolation=TF.InterpolationMode.BILINEAR)
-        mask = TF.resize(mask, self.resize, interpolation=TF.InterpolationMode.NEAREST)
-        if gt is not None:
-            gt = TF.resize(gt, self.resize, interpolation=TF.InterpolationMode.NEAREST)
-
-        # augment
-        if self.augment:
-            if random.random() > 0.5:
-                img = TF.hflip(img)
-                mask = TF.hflip(mask)
-                if gt is not None: gt = TF.hflip(gt)
-            if random.random() > 0.5:
-                img = TF.vflip(img)
-                if gt is not None: gt = TF.vflip(gt)
-                mask = TF.vflip(mask)
-
-        # To tensor
-        if not isinstance(img, torch.Tensor):
-            img = TF.to_tensor(img)
-        if not isinstance(mask, torch.Tensor):
-            mask = TF.to_tensor(mask)
-        if gt is not None and not isinstance(gt, torch.Tensor):
-            gt = TF.to_tensor(gt)
-            
-        return (img, gt, mask) if gt is not None else (img, mask)
+def get_test_transform(target_size=(512,512)):
+    return A.Compose([
+        A.Resize(*target_size),
+        ToTensorV2()
+    ],
+    additional_targets={
+        'gt': 'mask',
+        'mask': 'mask'
+    })
     
+# if __name__ == '__main__':
+    # batch_size = 1
     
-class JustForToTensor:
-    def __init__(self):
-        self.ok = "ok"
-
-    def __call__(self, img, mask, gt=None):
-        # To tensor
-        if not isinstance(img, torch.Tensor):
-            img = TF.to_tensor(img)
-        if not isinstance(mask, torch.Tensor):
-            mask = TF.to_tensor(mask)
-        if gt is not None and not isinstance(gt, torch.Tensor):
-            gt = TF.to_tensor(gt)
-            
-        return (img, gt, mask) if gt is not None else (img, mask)
+    # trainset = DRIVEDataset(train='train', transform=transform)
     
-if __name__ == '__main__':
-    batch_size = 1
+    # train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
+    #                         num_workers=1)
     
-    transform = JustForToTensor()
-    trainset = DRIVEDataset(train='train', transform=transform)
-    
-    train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
-                            num_workers=1)
-    
-    analyze_dataset(train_loader)
+    # analyze_dataset(train_loader)

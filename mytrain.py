@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 
 from lib.dataset.Ph2Dataset import Ph2
-from lib.dataset.DRIVEDataset import DRIVEDataset, JointTransform
+from lib.dataset.DRIVEDataset import *
 from lib.model.UNetModel import UNet, UNet2, LightningUNet2
 from lib.model.EncDecModel import LightningEncDec
 from pytorch_lightning import Trainer
@@ -82,11 +82,10 @@ def train_eval_ph2():
     
 def train_eval_DRIVE():
     size = 384
-    transform = JointTransform(resize=(size, size))
+    train_val_dataset = DRIVEDataset(train='train', transform=get_train_transform(target_size=(size,size)))
     # ---------------------------
     # Dataloaders
     # ---------------------------
-    train_val_dataset = DRIVEDataset(train='train', transform=transform)
     # Split train-val: simple 16/4 split = 4/1
     indices = list(range(len(train_val_dataset)))
     random_state = 42
@@ -96,9 +95,10 @@ def train_eval_DRIVE():
 
     train_dataset = Subset(train_val_dataset, train_idx)
     val_dataset = Subset(train_val_dataset, val_idx)
+    val_dataset.dataset.transform = get_test_transform(target_size=(size,size))
 
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=1)
+    val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=2)
     
     # test_dataset = DRIVEDataset(train='test', transform=transform)
     # test_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=1)
@@ -112,24 +112,24 @@ def train_eval_DRIVE():
         }
     
     # loss - Weight BCE
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    pos_weight=compute_pos_weight(train_loader, device)
-    print(f'train pos_weight:{pos_weight}')
+    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # pos_weight=compute_pos_weight(train_loader, device)
+    # print(f'train pos_weight:{pos_weight}')
 
-    loss = BCELoss(pos_weight=pos_weight, with_mask=True)
-    loss_name = 'MaskedWeightedBCE'
+    # loss = BCELoss(pos_weight=pos_weight, with_mask=True)
+    # loss_name = 'MaskedWeightedBCE'
     
     # loss - Weight
     # loss = BCELoss(with_mask=True)
     # loss_name = 'MaskedBCE'
     
     # loss - FocalLoss
-    # loss = FocalLoss(with_mask=True)
-    # loss_name = 'MaskedFocal'
+    loss = FocalLoss(with_mask=True)
+    loss_name = 'MaskedFocal'
     
-    # model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, n_channels=3, n_classes=1, base_c=32, with_mask=True)
+    model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, n_channels=3, n_classes=1, base_c=32, with_mask=True)
     
-    model = LightningEncDec(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, in_channels=3, num_classes=1, with_mask=True)
+    # model = LightningEncDec(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, in_channels=3, num_classes=1, with_mask=True)
     
     exp_name = f"{model.model_name}-{model.loss_fc_name}-DRIVE"
     
