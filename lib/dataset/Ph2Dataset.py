@@ -73,7 +73,21 @@ if __name__ == '__main__':
     print(f'dataset: {len(trainset)}')
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True,
                             num_workers=1)
+    data_iter = iter(train_loader)
+
+    # 取第一个 batch
+    images, masks = next(data_iter)
+
+    print("image shape", images.shape)  # (batch_size, C, H, W)
+    print("mask shape", masks.shape)   # (batch_size, 1, H, W) 或 (batch_size, H, W) 视你的 Dataset 而定
+
+    img0 = images[0]  # shape (C,H,W)
+    # mask0 = masks[0]  # shape (1,H,W) 或 (H,W)
+    print("min:", img0.min())
+    print("max:", img0.max())
+    # analyze_dataset(train_loader)
     
-    analyze_dataset(train_loader)
+    print('images dtype:', images.dtype)  # should be torch.float32
+    print('masks dtype:', masks.dtype)    # should be torch.float32
     
     

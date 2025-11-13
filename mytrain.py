@@ -100,8 +100,8 @@ def train_eval_DRIVE():
     train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=2)
     val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=2)
     
-    # test_dataset = DRIVEDataset(train='test', transform=transform)
-    # test_loader = DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=1)
+    test_dataset = DRIVEDataset(train='test', transform=get_test_transform(target_size=(size,size)))
+    test_loader = DataLoader(test_dataset, batch_size=4, shuffle=False, num_workers=1)
     
     custom_metrics = {
             "dice": masked_dice_coef, 
@@ -112,20 +112,20 @@ def train_eval_DRIVE():
         }
     
     # loss - Weight BCE
-    # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    # pos_weight=compute_pos_weight(train_loader, device)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    pos_weight=compute_pos_weight(train_loader, device)
     # print(f'train pos_weight:{pos_weight}')
 
-    # loss = BCELoss(pos_weight=pos_weight, with_mask=True)
-    # loss_name = 'MaskedWeightedBCE'
+    loss = BCELoss(pos_weight=pos_weight, with_mask=True)
+    loss_name = 'MaskedWeightedBCE'
     
-    # loss - Weight
+    # loss - BCE
     # loss = BCELoss(with_mask=True)
     # loss_name = 'MaskedBCE'
     
     # loss - FocalLoss
-    loss = FocalLoss(with_mask=True)
-    loss_name = 'MaskedFocal'
+    # loss = FocalLoss(with_mask=True)
+    # loss_name = 'MaskedFocal'
     
     model = LightningUNet2(loss_fn=loss, loss_name=loss_name, metrics=custom_metrics, n_channels=3, n_classes=1, base_c=32, with_mask=True)
     
@@ -136,6 +136,7 @@ def train_eval_DRIVE():
     logger = CSVLogger("logs", name=f"{exp_name}_experiment")
     trainer = Trainer(max_epochs=100, log_every_n_steps=10, accelerator="gpu", logger=logger)
     trainer.fit(model, train_loader, val_loader)
+    trainer.test(model, test_loader)
     
     model.plot_metrics()
     
