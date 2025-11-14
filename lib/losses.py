@@ -57,7 +57,9 @@ class FocalLoss(nn.Module):
     def forward(self, logits, targets, mask=None, eps=1e-7):
         bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
         pt = torch.exp(-bce)
-        loss = self.alpha * (1-pt)**self.gamma * bce
+        # alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+        # loss = alpha_t * (1 - pt)**self.gamma * bce
+        loss = self.alpha * (1 - pt)**self.gamma * bce
         
         if self.with_mask and mask is not None:
             mask = mask.float()
